@@ -1,0 +1,30 @@
+# Instrument Universe Configuration
+# Maps instrument IDs to symbols and trading parameters
+
+[[instruments]]
+id = 1
+symbol = "AAPL"
+tick_size = 100        # 1 cent in fixed-point (price * 10000)
+lot_size = 1
+exchange = "NASDAQ"
+
+[[instruments]]
+id = 2
+symbol = "MSFT"
+tick_size = 100
+lot_size = 1
+exchange = "NASDAQ"
+
+[[instruments]]
+id = 3
+symbol = "GOOG"
+tick_size = 100
+lot_size = 1
+exchange = "NASDAQ"
+
+[[instruments]]
+id = 4
+symbol = "AMZN"
+tick_size = 100
+lot_size = 1
+exchange = "NASDAQ"

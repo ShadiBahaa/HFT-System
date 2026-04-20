@@ -1,0 +1,22 @@
+# Pre-Trade Risk Limits Configuration
+# Per-instrument limits enforced by the two-tier risk engine
+
+[global]
+max_gross_notional = 500_000_000    # $50,000 in fixed-point
+kill_switch_loss_limit = 10_000_000 # $1,000 loss triggers kill switch
+
+[default_instrument]
+max_position = 5000
+max_notional = 100_000_000
+max_orders_per_sec = 100
+max_order_size = 1000
+fat_finger_price = 5000             # 50 cents in fixed-point
+
+# Override for specific instruments
+[instruments.AAPL]
+max_position = 10000
+max_order_size = 2000
+
+[instruments.GOOG]
+max_position = 2000
+fat_finger_price = 10000            # Wider threshold for high-priced stocks

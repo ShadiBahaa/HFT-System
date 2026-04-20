@@ -1,0 +1,50 @@
+# Venue Configuration
+# Connection parameters and rate limits per exchange
+
+[[venues]]
+id = 1
+name = "NASDAQ"
+protocol = "ITCH_5.0"
+feed_host = "233.54.12.111"
+feed_port = 26477
+gateway_host = "198.51.100.1"
+gateway_port = 9200
+gateway_protocol = "FIX_4.2"
+new_orders_per_sec = 300
+cancel_per_sec = 500
+total_messages_per_sec = 1000
+burst_limit = 50
+maker_fee_bps = -20    # Rebate
+taker_fee_bps = 30
+
+[[venues]]
+id = 2
+name = "BATS_BZX"
+protocol = "PITCH"
+feed_host = "233.54.12.112"
+feed_port = 30001
+gateway_host = "198.51.100.2"
+gateway_port = 9300
+gateway_protocol = "FIX_4.2"
+new_orders_per_sec = 500
+cancel_per_sec = 1000
+total_messages_per_sec = 2000
+burst_limit = 100
+maker_fee_bps = -25
+taker_fee_bps = 25
+
+[[venues]]
+id = 3
+name = "IEX"
+protocol = "IEX_TOPS"
+feed_host = "233.54.12.113"
+feed_port = 40001
+gateway_host = "198.51.100.3"
+gateway_port = 9400
+gateway_protocol = "FIX_4.2"
+new_orders_per_sec = 200
+cancel_per_sec = 300
+total_messages_per_sec = 500
+burst_limit = 30
+maker_fee_bps = 0
+taker_fee_bps = 9
