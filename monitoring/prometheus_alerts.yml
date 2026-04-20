@@ -1,0 +1,195 @@
+# =============================================================================
+# HFT system Prometheus alert rules.
+#
+# Translates the §13.3 alert tiers from hft_system_design.md into PromQL.
+# Metric names are those exported by telemetry/metrics_publisher.h — see
+# docs/metrics_catalog.md for the canonical list.
+#
+# Route critical → PagerDuty (wakes on-call), warning → Slack (#trading-ops),
+# info → dashboard only. The router config lives in the Alertmanager repo,
+# not here.
+# =============================================================================
+
+groups:
+  # ---------------------------------------------------------------------------
+  # CRITICAL — wake someone up
+  # ---------------------------------------------------------------------------
+  - name: hft_critical
+    interval: 1s
+    rules:
+      - alert: TickToTradeLatencyP99High
+        expr: hft_tick_to_trade_p99_ns > 50000
+        for: 10s
+        labels:
+          severity: critical
+          pager: trading-oncall
+        annotations:
+          summary: "Tick-to-trade p99 above 50µs for 10s"
+          description: |
+            Observed p99 = {{ $value | humanize }} ns on {{ $labels.instance }}.
+            Budget is 10µs (§1.1). Check CPU isolation, context switches,
+            and feed gap rate. Runbook: docs/runbook.md#latency-spike.
+
+      - alert: PnlDrawdownCritical
+        expr: increase(hft_pnl_realized_usd[5m]) < -100000
+        for: 0s
+        labels:
+          severity: critical
+          pager: trading-oncall
+        annotations:
+          summary: "Realized PnL drawdown > $100K in 5m"
+          description: |
+            5-minute realized PnL delta = {{ $value | humanize }} USD on
+            {{ $labels.instance }}. Consider triggering kill switch.
+            Runbook: docs/incident_response.md#pnl-bleed.
+
+      - alert: ExchangeDisconnect
+        expr: hft_exchange_connected == 0
+        for: 5s
+        labels:
+          severity: critical
+          pager: trading-oncall
+        annotations:
+          summary: "Exchange {{ $labels.venue }} disconnected"
+          description: |
+            Venue {{ $labels.venue }} has been down for 5s. Open orders may
+            be orphaned. Runbook: docs/runbook.md#exchange-outage.
+
+      - alert: KillSwitchActivated
+        expr: hft_kill_switch_active == 1
+        for: 0s
+        labels:
+          severity: critical
+          pager: trading-oncall
+        annotations:
+          summary: "Kill switch activated on {{ $labels.instance }}"
+          description: |
+            Reason code = {{ $labels.reason }}. All trading halted. Manual
+            re-arm required after root cause is understood.
+
+      - alert: PacketLossRateHigh
+        expr: rate(hft_feed_packet_loss_total[5s]) / rate(hft_feed_packets_total[5s]) > 0.001
+        for: 5s
+        labels:
+          severity: critical
+          pager: trading-oncall
+        annotations:
+          summary: "Feed packet loss > 0.1% on {{ $labels.venue }}"
+          description: |
+            Loss rate = {{ $value | humanizePercentage }}. Budget is 0.0001%
+            (§1.1). Check NIC ring queue depth, CPU saturation on the feed
+            core, and multicast group membership.
+
+      - alert: ClockSyncOffsetHigh
+        expr: abs(hft_clock_sync_offset_ns) > 1000000
+        for: 10s
+        labels:
+          severity: critical
+          pager: trading-oncall
+        annotations:
+          summary: "PTP clock offset > 1ms on {{ $labels.instance }}"
+          description: |
+            Offset = {{ $value | humanize }} ns. Breaches MiFID II RTS 25
+            100µs requirement. Audit timestamps are now suspect.
+
+  # ---------------------------------------------------------------------------
+  # WARNING — Slack notification, no page
+  # ---------------------------------------------------------------------------
+  - name: hft_warning
+    interval: 5s
+    rules:
+      - alert: TickToTradeLatencyP99Elevated
+        expr: hft_tick_to_trade_p99_ns > 20000
+        for: 30s
+        labels:
+          severity: warning
+          notify: slack-trading-ops
+        annotations:
+          summary: "Tick-to-trade p99 elevated above 20µs"
+          description: "p99 = {{ $value | humanize }} ns on {{ $labels.instance }}."
+
+      - alert: FillRateDeviation
+        expr: |
+          abs(
+            hft_fill_rate_pct
+            - avg_over_time(hft_fill_rate_pct[1h])
+          )
+          > 2 * stddev_over_time(hft_fill_rate_pct[1h])
+        for: 60s
+        labels:
+          severity: warning
+          notify: slack-trading-ops
+        annotations:
+          summary: "Fill rate > 2σ from 1h mean on {{ $labels.strategy }}"
+          description: |
+            Current = {{ $value | humanize }}%. Could indicate adverse
+            selection, venue misrouting, or stale quote pricing.
+
+      - alert: PositionNearLimit
+        expr: abs(hft_position_net) / hft_position_limit > 0.8
+        for: 30s
+        labels:
+          severity: warning
+          notify: slack-trading-ops
+        annotations:
+          summary: "Position on {{ $labels.instrument }} > 80% of limit"
+          description: |
+            Net = {{ $value | humanizePercentage }} of max_position. Strategy
+            is losing room to hedge. Review inventory bias.
+
+      - alert: WalWriteLatencyHigh
+        expr: hft_wal_write_latency_us > 1000
+        for: 30s
+        labels:
+          severity: warning
+          notify: slack-trading-ops
+        annotations:
+          summary: "WAL write latency > 1ms"
+          description: |
+            Latency = {{ $value | humanize }} µs. Crash recovery window
+            widens; investigate NVMe health and io_uring queue depth.
+
+      - alert: ContextSwitchesOnHotCore
+        expr: rate(hft_context_switches_total{core_kind="isolated"}[30s]) > 0
+        for: 30s
+        labels:
+          severity: warning
+          notify: slack-trading-ops
+        annotations:
+          summary: "Context switches on isolated core {{ $labels.core }}"
+          description: |
+            Rate = {{ $value | humanize }} cs/s. isolcpus guarantee broken.
+            Check for rogue kthreads or forgotten cgroups.
+
+  # ---------------------------------------------------------------------------
+  # INFO — dashboard only
+  # ---------------------------------------------------------------------------
+  - name: hft_info
+    interval: 30s
+    rules:
+      - alert: StrategyPnlThreshold
+        expr: hft_strategy_pnl_usd > 50000 or hft_strategy_pnl_usd < -50000
+        for: 60s
+        labels:
+          severity: info
+          notify: dashboard
+        annotations:
+          summary: "Strategy {{ $labels.strategy }} PnL crossed ±$50K"
+
+      - alert: ExchangeMaintenanceWindowApproaching
+        expr: (hft_exchange_maintenance_ts - time()) < 3600
+        for: 0s
+        labels:
+          severity: info
+          notify: dashboard
+        annotations:
+          summary: "Exchange {{ $labels.venue }} maintenance within 1h"
+
+      - alert: CertificateExpiringSoon
+        expr: (hft_certificate_expiry_ts - time()) < (30 * 86400)
+        for: 0s
+        labels:
+          severity: info
+          notify: dashboard
+        annotations:
+          summary: "Certificate {{ $labels.cert }} expires in < 30 days"

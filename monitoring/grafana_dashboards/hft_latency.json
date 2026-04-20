@@ -1,0 +1,199 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "Prometheus",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "title": "HFT — Latency",
+  "uid": "hft-latency",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "1s",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": ["1s", "5s", "10s", "30s", "1m"]
+  },
+  "tags": ["hft", "latency"],
+  "templating": {
+    "list": [
+      {
+        "name": "instance",
+        "type": "query",
+        "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+        "query": "label_values(hft_tick_to_trade_p99_ns, instance)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": {"selected": true, "text": "All", "value": "$__all"}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Tick → Trade latency (p50 / p99 / p999)",
+      "id": 1,
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ns",
+          "custom": {"lineWidth": 2, "fillOpacity": 10, "drawStyle": "line"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "orange", "value": 10000},
+              {"color": "red", "value": 50000}
+            ]
+          }
+        }
+      },
+      "options": {
+        "legend": {"displayMode": "table", "placement": "right", "calcs": ["mean", "max", "lastNotNull"]}
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "hft_tick_to_trade_p50_ns{instance=~\"$instance\"}",
+          "legendFormat": "p50 — {{instance}}"
+        },
+        {
+          "refId": "B",
+          "expr": "hft_tick_to_trade_p99_ns{instance=~\"$instance\"}",
+          "legendFormat": "p99 — {{instance}}"
+        },
+        {
+          "refId": "C",
+          "expr": "hft_tick_to_trade_p999_ns{instance=~\"$instance\"}",
+          "legendFormat": "p999 — {{instance}}"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Current p99",
+      "id": 2,
+      "gridPos": {"h": 6, "w": 6, "x": 0, "y": 10},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ns",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "orange", "value": 20000},
+              {"color": "red", "value": 50000}
+            ]
+          }
+        }
+      },
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "graphMode": "area"},
+      "targets": [
+        {"refId": "A", "expr": "max(hft_tick_to_trade_p99_ns{instance=~\"$instance\"})"}
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Feed packet loss (5s rate)",
+      "id": 3,
+      "gridPos": {"h": 6, "w": 6, "x": 6, "y": 10},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 4,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "orange", "value": 0.00001},
+              {"color": "red", "value": 0.001}
+            ]
+          }
+        }
+      },
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(hft_feed_packet_loss_total[5s])) / sum(rate(hft_feed_packets_total[5s]))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Clock sync offset",
+      "id": 4,
+      "gridPos": {"h": 6, "w": 6, "x": 12, "y": 10},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ns",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "orange", "value": 100000},
+              {"color": "red", "value": 1000000}
+            ]
+          }
+        }
+      },
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [
+        {"refId": "A", "expr": "max(abs(hft_clock_sync_offset_ns))"}
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Kill switch",
+      "id": 5,
+      "gridPos": {"h": 6, "w": 6, "x": 18, "y": 10},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {"type": "value", "options": {"0": {"text": "ARMED", "color": "green"}, "1": {"text": "TRIPPED", "color": "red"}}}
+          ]
+        }
+      },
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"},
+      "targets": [
+        {"refId": "A", "expr": "max(hft_kill_switch_active)"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Component latencies",
+      "id": 6,
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {"unit": "ns"}},
+      "targets": [
+        {"refId": "A", "expr": "hft_feed_handler_latency_ns", "legendFormat": "feed — {{venue}}"},
+        {"refId": "B", "expr": "hft_book_update_latency_ns", "legendFormat": "book — {{instance}}"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "WAL write latency",
+      "id": 7,
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {"unit": "µs"}},
+      "targets": [
+        {"refId": "A", "expr": "hft_wal_write_latency_us{instance=~\"$instance\"}"}
+      ]
+    }
+  ]
+}

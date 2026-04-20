@@ -1,0 +1,196 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "Prometheus",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "title": "HFT — PnL & Position",
+  "uid": "hft-pnl",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "5s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": ["5s", "10s", "30s", "1m"]
+  },
+  "tags": ["hft", "pnl"],
+  "templating": {
+    "list": [
+      {
+        "name": "strategy",
+        "type": "query",
+        "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+        "query": "label_values(hft_strategy_pnl_usd, strategy)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": {"selected": true, "text": "All", "value": "$__all"}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Realized PnL (session)",
+      "id": 1,
+      "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "orange", "value": -50000},
+              {"color": "green", "value": 0}
+            ]
+          }
+        }
+      },
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background", "graphMode": "area"},
+      "targets": [
+        {"refId": "A", "expr": "sum(hft_pnl_realized_usd{strategy=~\"$strategy\"})"}
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Unrealized PnL",
+      "id": 2,
+      "gridPos": {"h": 6, "w": 6, "x": 6, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {
+        "defaults": {"unit": "currencyUSD", "decimals": 0}
+      },
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "graphMode": "area"},
+      "targets": [
+        {"refId": "A", "expr": "sum(hft_pnl_unrealized_usd{strategy=~\"$strategy\"})"}
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "5-minute PnL delta",
+      "id": 3,
+      "gridPos": {"h": 6, "w": 6, "x": 12, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "orange", "value": -100000},
+              {"color": "green", "value": 0}
+            ]
+          }
+        }
+      },
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"},
+      "targets": [
+        {"refId": "A", "expr": "increase(sum(hft_pnl_realized_usd{strategy=~\"$strategy\"})[5m:])"}
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Gross notional",
+      "id": 4,
+      "gridPos": {"h": 6, "w": 6, "x": 18, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {"unit": "currencyUSD", "decimals": 0}},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [
+        {"refId": "A", "expr": "sum(hft_position_gross_notional_usd)"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Realized PnL per strategy",
+      "id": 5,
+      "gridPos": {"h": 10, "w": 12, "x": 0, "y": 6},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {"unit": "currencyUSD", "custom": {"lineWidth": 2, "fillOpacity": 15}}},
+      "options": {"legend": {"displayMode": "table", "placement": "right", "calcs": ["lastNotNull", "min", "max"]}},
+      "targets": [
+        {"refId": "A", "expr": "hft_pnl_realized_usd{strategy=~\"$strategy\"}", "legendFormat": "{{strategy}}"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Fill rate per strategy (%)",
+      "id": 6,
+      "gridPos": {"h": 10, "w": 12, "x": 12, "y": 6},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {"unit": "percent", "decimals": 2}},
+      "targets": [
+        {"refId": "A", "expr": "hft_fill_rate_pct{strategy=~\"$strategy\"}", "legendFormat": "{{strategy}}"}
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Positions by instrument",
+      "id": 7,
+      "gridPos": {"h": 10, "w": 12, "x": 0, "y": 16},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Value #A"},
+            "properties": [{"id": "displayName", "value": "Net position"}]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Value #B"},
+            "properties": [
+              {"id": "displayName", "value": "% of limit"},
+              {"id": "unit", "value": "percentunit"},
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {"color": "green", "value": null},
+                    {"color": "orange", "value": 0.8},
+                    {"color": "red", "value": 1.0}
+                  ]
+                }
+              },
+              {"id": "custom.cellOptions", "value": {"type": "color-background"}}
+            ]
+          }
+        ]
+      },
+      "options": {"showHeader": true},
+      "targets": [
+        {"refId": "A", "expr": "hft_position_net", "format": "table", "instant": true},
+        {"refId": "B", "expr": "abs(hft_position_net) / hft_position_limit", "format": "table", "instant": true}
+      ],
+      "transformations": [
+        {"id": "merge"},
+        {"id": "organize", "options": {"excludeByName": {"Time": true, "__name__": true, "job": true}}}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Orders sent / fills / cancels (per-sec)",
+      "id": 8,
+      "gridPos": {"h": 10, "w": 12, "x": 12, "y": 16},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {"unit": "ops"}},
+      "targets": [
+        {"refId": "A", "expr": "sum by (venue) (rate(hft_orders_sent_total[30s]))", "legendFormat": "orders — {{venue}}"},
+        {"refId": "B", "expr": "sum by (venue) (rate(hft_fills_total[30s]))", "legendFormat": "fills — {{venue}}"},
+        {"refId": "C", "expr": "sum by (venue) (rate(hft_cancels_total[30s]))", "legendFormat": "cancels — {{venue}}"}
+      ]
+    }
+  ]
+}
