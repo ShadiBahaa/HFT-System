@@ -1,0 +1,9 @@
+build/
+build-docker/
+.git/
+.github/
+.claude/
+.sixth/
+*.log
+*.bin
+err.log

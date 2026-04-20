@@ -1,0 +1,145 @@
+# =============================================================================
+# Build outputs — CMake / Ninja / Make
+# =============================================================================
+build/
+build-*/
+cmake-build-*/
+out/
+_deps/
+
+# CMake scratch
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+cmake_install.cmake
+CTestTestfile.cmake
+install_manifest.txt
+compile_commands.json
+Testing/
+
+# Ninja
+.ninja_deps
+.ninja_log
+build.ninja
+rules.ninja
+
+# Compiled objects / archives / libraries / executables
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.pdb
+*.ilk
+*.exp
+*.idb
+*.map
+
+# GCC / Clang PGO artifacts
+*.gcda
+*.gcno
+*.gcov
+*.profraw
+*.profdata
+default.profraw
+
+# LTO / AOT caches
+*.ltrans.out
+*.gch
+*.pch
+
+# =============================================================================
+# Runtime artifacts produced by tests & the trading_engine binary
+# =============================================================================
+# WAL files written by WALWriter + chaos/integration tests
+*.wal
+hft_engine.wal
+wal_test_*
+*wal*.bin
+
+# Recorded market-data tapes used by MarketDataRecorder / replay tests
+mdr_test_replay_*.bin
+*.mdr
+
+# Benchmark outputs
+bench_*.txt
+bench_*.json
+run.txt
+latency_*.txt
+
+# Test logs
+err.log
+out.log
+*.log
+Testing/Temporary/
+
+# Core dumps — avoid matching the core/ source directory
+core.[0-9]*
+vgcore.*
+*.core
+
+# =============================================================================
+# Editor / IDE scratch
+# =============================================================================
+.vscode/
+.vs/
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# CLion / JetBrains
+*.sln.docstates
+cmake-build-debug/
+cmake-build-release/
+
+# VS Code CMake Tools
+.cache/
+compile_commands.json.tmp
+
+# =============================================================================
+# Python tooling artifacts (scripts/*.py)
+# =============================================================================
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.venv/
+venv/
+
+# =============================================================================
+# Agent / AI tool scratch dirs (local only, never share)
+# =============================================================================
+.claude/
+.sixth/
+.aider*
+.cursor*
+
+# =============================================================================
+# Docker / container scratch
+# =============================================================================
+.dockerignore.bak
+
+# =============================================================================
+# Secrets — hard refusal list
+# =============================================================================
+# If any of these appear in a diff, stop and ask before committing.
+*.key
+*.pem
+*.pfx
+*.p12
+.env
+.env.*
+!.env.example
+secrets.*
+credentials.*
