@@ -1,0 +1,19 @@
+# Latency regression baseline.
+#
+# Format (per line, whitespace-separated):
+#   name  p50_max  p99_max  p999_max
+#
+# All thresholds are WALL-CLOCK nanoseconds for a SINGLE hot-path call,
+# measured by tests/benchmarks/bench_hot_path.cpp on the project CI runner.
+# Lines starting with "#" and blank lines are ignored.
+#
+# Thresholds carry 2-3x headroom over observed typical numbers on a modern
+# x86_64 desktop (GCC 15.2, -O3 -march=native). When a legitimate regression
+# is fixed or the baseline runner changes, regenerate with:
+#
+#   ./build/tests/benchmarks/hft_benchmarks > run.txt
+#   python3 scripts/latency_regression.py --update run.txt
+#
+OrderBook::apply              50  100  150
+MarketMaker::on_book_update   50   80  120
+PreTradeRisk::check           50   80  120
